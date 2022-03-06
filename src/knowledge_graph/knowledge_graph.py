@@ -1,4 +1,5 @@
 
+from typing import Tuple
 import spacy
 import pandas as pd
 import numpy as np
@@ -8,11 +9,12 @@ from tqdm import tqdm
 import networkx as ntx
 
 class knowledge_grapher():
-    def __init__(self, data) -> None:
-        self.nlp = spacy.load("ro_core_news_sm")
+    def __init__(self, data, load_spacy:bool=False) -> None:
+        if load_spacy:
+            self.nlp = spacy.load("ro_core_news_sm")
         self.data = data
         
-    def extract_entities(self, sents):
+    def extract_entities(self, sents)->pd.DataFrame:
         # chunk one
         enti_one = ""
         enti_two = ""
@@ -101,7 +103,7 @@ class knowledge_grapher():
         
         return pd.DataFrame({'source':source, 'target':target, 'edge':relations})
 
-    def buildGraph(self, data_kgf, relation = None):
+    def buildGraph(self, data_kgf, relation = None)->None:
         if relation:
             self.graph = ntx.from_pandas_edgelist(data_kgf[data_kgf['edge']==relation], "source", "target",
                          edge_attr=True, create_using=ntx.MultiDiGraph())
@@ -109,7 +111,7 @@ class knowledge_grapher():
             self.graph = ntx.from_pandas_edgelist(data_kgf, "source", "target",
                          edge_attr=True, create_using=ntx.MultiDiGraph())
 
-    def plot_graph(self):
+    def plot_graph(self)->None:
 
         plot.figure(figsize=(14, 14))
         posn = ntx.spring_layout(self.graph)
@@ -117,7 +119,30 @@ class knowledge_grapher():
         plot.savefig('plots/graph_plot.png')
         plot.close()
 
-    def prepare_data(self, data_kgf:pd.DataFrame):
+    def compute_centrality(self,)->None:
+        self.centrality_dict = ntx.degree_centrality(self.graph)
+        self.in_centrality_dict = ntx.in_degree_centrality(self.graph)
+        self.out_centrality_dict = ntx.out_degree_centrality(self.graph)
+        # self.eigenvector_centrality_dict = ntx.katz_centrality(self.graph)
+
+    def load_data(self, path)->None:
+        data_kgf = pd.read_csv(path, delimiter='\t')
+        self.buildGraph(data_kgf)
+    
+    def get_centers(self, max_centers:int=5)->None:
+        sorted_dict = sorted(self.centrality_dict.items(), key=lambda x: x[1])[::-1]
+        in_sorted_dict = sorted(self.in_centrality_dict.items(), key=lambda x: x[1])[::-1]
+        out_sorted_dict = sorted(self.out_centrality_dict.items(), key=lambda x: x[1])[::-1]
+
+        degree_centers = sorted_dict[:max_centers]
+        in_degree_centers = in_sorted_dict[:max_centers]
+        out_degree_centers = out_sorted_dict[:max_centers]
+
+        self.degree_adjacency = {u:self.graph[u] for u,_ in degree_centers}
+        self.in_degree_adjacency = {u:self.graph[u] for u,_ in in_degree_centers}
+        self.out_degree_adjacency = {u:self.graph[u] for u,_ in out_degree_centers}
+
+    def prepare_data(self, data_kgf:pd.DataFrame)->Tuple[pd.DataFrame]:
         
         SAMPLES = len(data_kgf.index)
 
