@@ -125,7 +125,7 @@ if __name__  == '__main__':
 
     with open("ramdom_dataset.txt", "w") as f:
 
-        random_context = [specific_string(random.randint(0,_max_word_size)) for _ in range(0,random.randint(0,_max_phrase_size))]
+        random_context = [specific_string(random.randint(0,_max_word_size)) for _ in range(0,random.randint(0,1))]
         
         random_context.append('?')
         random_context.append('\n')
