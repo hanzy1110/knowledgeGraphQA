@@ -128,7 +128,7 @@ for epoch in tqdm(range(EPOCHS)):
     total_loss = 0
     # print(enc_hidden[0].shape, enc_hidden[1].shape)
 
-    for (batch, (inp, targ)) in enumerate(train_dataset.take(steps_per_epoch)):
+    for (batch, (inp, targ)) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
         batch_loss = train_step(inp, targ, enc_hidden)
         total_loss += batch_loss
 
