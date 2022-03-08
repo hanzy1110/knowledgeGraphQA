@@ -12,6 +12,8 @@ from tqdm import tqdm
 import src.utils.dataset_utils as du
 from src.utils.dataset_creators import QADataset
 
+
+
 vocab_size = 4096
 sequence_length = 10
 
@@ -36,7 +38,6 @@ weight_decay = 0.00000001
 # but makes training slower. Don't make this larger than leraning_rate.
 training_iterations_count = 400000
 
-# %%
 path = 'final_dataset_clean_v2 .tsv'
 
 dataset_creator = QADataset(path)
@@ -55,11 +56,10 @@ vocab_tar_size = len(lang_tokenizer.word_index)+2
 max_length_input = data_dict['context'].shape[1]
 max_length_output = data_dict['target'].shape[1]
 
+
 embedding_dim = D
 units = 1024
 steps_per_epoch = num_examples//BATCH_SIZE
-
-num_tokens = vocab_size + 2
 
 # %%
 BATCH_SIZE = 128
@@ -105,30 +105,34 @@ def train_step(inp, targ, enc_hidden):
 checkpoint_dir = './training_checkpoints'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(optimizer=optimizer,
-                                 encoder=encoder,
-                                 decoder=decoder)
+                                encoder=encoder,
+                                decoder=decoder)
 
 
 EPOCHS = 10
 
 for epoch in tqdm(range(EPOCHS)):
+    
+    # TODO: Implement training loop
+    # FIXME: Implement training loop
+    
     start = time.time()
 
     enc_hidden = encoder.initialize_hidden_state()
     total_loss = 0
     # print(enc_hidden[0].shape, enc_hidden[1].shape)
 
-    for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
-        inp = [data_dict['context'], data_dict['question']]
-        targ = data_dict['target']
+for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
+    inp = [data_dict['context'], data_dict['question']]
+    targ = data_dict['target']
 
-        batch_loss = train_step(inp, targ, enc_hidden)
-        total_loss += batch_loss
+    batch_loss = train_step(inp, targ, enc_hidden)
+    total_loss += batch_loss
 
-        if batch % 100 == 0:
-            print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
-                                                         batch,
-                                                         batch_loss.numpy()))
+    if batch % 100 == 0:
+        print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
+                                                    batch,
+                                                    batch_loss.numpy()))
     # saving (checkpoint) the model every 2 epochs
     if (epoch + 1) % 2 == 0:
         checkpoint.save(file_prefix=checkpoint_prefix)
