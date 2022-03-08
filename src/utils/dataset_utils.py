@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -9,8 +10,8 @@ from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 
 def get_word_embeddings():
-    word_path = r'skipgramModelMetadata\metadata.tsv'
-    vector_path = r'skipgramModelMetadata\vectors.tsv'
+    word_path = os.path.join('skipgramModelMetadata','metadata.tsv')
+    vector_path = os.path.join('skipgramModelMetadata','vectors.tsv')
     embeddings_index = {}
     words = pd.read_csv(word_path, sep='\t')['words   '].values
 
@@ -35,6 +36,7 @@ def get_embedding_matrix(word_index:Dict[str,str])->np.ndarray:
     misses = 0
 
     # Prepare embedding matrix
+    # Unknown words get the zero vector they should get normal noise!
     embedding_matrix = np.zeros((num_tokens, embedding_dim))
     for word, i in word_index.items():
         embedding_vector = embeddings.get(word)

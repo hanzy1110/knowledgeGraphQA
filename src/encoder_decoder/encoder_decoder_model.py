@@ -3,19 +3,28 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow_addons as tfa
 from ..utils.dataset_utils import get_embedding_matrix
-
+from ..utils.dataset_creators import QADataset
 
 class Encoder(keras.Model):
-    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz, word_index= None):
+    def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz, language_tokenizer:keras.preprocessing.text.Tokenizer):
 
         super(Encoder, self).__init__()
         self.batch_sz = batch_sz
         self.enc_units = enc_units
-        # self.embedding_matrix = get_embedding_matrix(word_index)
-        # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
-        #                 embeddings_initializer=keras.initializers.Constant(self.embedding_matrix),
-        #                 trainable=False, name = "Embedder")
-        self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
+
+        self.concat = keras.layers.Concatenate(axis=-1)
+
+        self.embedding_matrix = get_embedding_matrix(language_tokenizer.word_index)
+
+        print('embedding shape', self.embedding_matrix.shape[0])
+        print('vocab size', vocab_size)
+        assert self.embedding_matrix.shape[0] == vocab_size
+
+        self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
+                        embeddings_initializer=keras.initializers.Constant(self.embedding_matrix),
+                        trainable=False, name = "Embedder")
+
+        # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
         ##-------- LSTM layer in Encoder ------- ##
         self.lstm_layer = keras.layers.LSTM(self.enc_units,
                                             return_sequences=True,
@@ -23,6 +32,7 @@ class Encoder(keras.Model):
                                             recurrent_initializer='glorot_uniform')
 
     def call(self, x, hidden):
+        x = self.concat(x)
         x = self.embedding(x)
         output, h, c = self.lstm_layer(x, initial_state=hidden)
         return output, h, c
@@ -33,7 +43,7 @@ class Encoder(keras.Model):
 
 class Decoder(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, dec_units, batch_sz, max_length_input,
-                max_length_output, word_index=None, attention_type='luong'):
+                max_length_output, language_tokenizer:keras.preprocessing.text.Tokenizer, attention_type='luong'):
 
         super(Decoder, self).__init__()
         self.batch_sz = batch_sz
@@ -41,13 +51,20 @@ class Decoder(tf.keras.Model):
         self.attention_type = attention_type
         self.max_length_output = max_length_output
         # Embedding Layer
-        # self.embedding_matrix = get_embedding_matrix(word_index)
+        # voc = language_tokenizer.get_vocabulary()
 
-        # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
-        #                 embeddings_initializer=keras.initializers.Constant(self.embedding_matrix),
-        #                 trainable=False, name = "Embedder")
+        word_index = language_tokenizer.word_index
+
+        self.embedding_matrix = get_embedding_matrix(word_index)
+        print('embedding shape', self.embedding_matrix.shape[0])
+        print('vocab size', vocab_size)
+        assert self.embedding_matrix.shape[0] == vocab_size
+
+        self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
+                        embeddings_initializer=keras.initializers.Constant(self.embedding_matrix),
+                        trainable=False, name = "Embedder")
         
-        self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
+        # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
 
         # Final Dense layer on which softmax will be applied
         self.fc = keras.layers.Dense(vocab_size)
@@ -113,11 +130,15 @@ def loss_function(real, pred):
     return loss
 
 
-def beam_evaluate_sentence(sentence, units, dataset_creator, inp_lang, encoder, decoder, max_length_input, max_length_output, beam_width=3):
+def beam_evaluate_sentence(sentence:str, units:int,
+                        dataset_creator:QADataset, lang_tokenizer, 
+                        encoder:Encoder, decoder:Decoder,
+                        max_length_input:int, max_length_output:int,
+                        beam_width=3):
 
     sentence = dataset_creator.preprocess_sentence(sentence)
 
-    inputs = [inp_lang.word_index[i] for i in sentence.split(' ')]
+    inputs = [lang_tokenizer.word_index[i] for i in sentence.split(' ')]
     inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs],
                                                             maxlen=max_length_input,
                                                             padding='post')
@@ -131,8 +152,8 @@ def beam_evaluate_sentence(sentence, units, dataset_creator, inp_lang, encoder, 
     dec_h = enc_h
     dec_c = enc_c
 
-    start_tokens = tf.fill([inference_batch_size], inp_lang.word_index['<start>'])
-    end_token = inp_lang.word_index['<end>']
+    start_tokens = tf.fill([inference_batch_size], lang_tokenizer.word_index['<start>'])
+    end_token = lang_tokenizer.word_index['<end>']
 
     # From official documentation
     # NOTE If you are using the BeamSearchDecoder with a cell wrapped in AttentionWrapper, then you must ensure that:

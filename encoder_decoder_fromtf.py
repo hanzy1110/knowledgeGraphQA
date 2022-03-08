@@ -39,12 +39,6 @@ training_iterations_count = 400000
 # %%
 path = 'final_dataset_clean_v2 .tsv'
 
-data = pd.read_csv(path, delimiter='\t', encoding="utf-8")
-data_dict = du.parse_input(data, 0.7, 0.2)
-
-vectorizer = TextVectorization(
-    max_tokens=vocab_size, output_sequence_length=sequence_length)
-
 dataset_creator = QADataset(path)
 num_examples = -1
 BUFFER_SIZE = 32000
@@ -52,21 +46,14 @@ BATCH_SIZE = 128
 
 train_dataset, val_dataset, lang_tokenizer = dataset_creator.call(
     num_examples, BUFFER_SIZE, BATCH_SIZE)
-# %%
-# a = next(iter(train_dataset))
-# vectorizer.adapt(a[0])
-# voc = vectorizer.get_vocabulary()
-# num_tokens = len(voc) + 2
-# word_index = dict(zip(voc, range(len(voc))))
 
+data_dict = next(iter(train_dataset))
+print(data_dict['context'].shape, data_dict['question'].shape, data_dict['target'].shape)
 
-example_input_batch, example_target_batch = next(iter(train_dataset))
-print(example_input_batch.shape, example_target_batch.shape)
-
-vocab_inp_size = len(lang_tokenizer.word_index)+1
-vocab_tar_size = len(lang_tokenizer.word_index)+1
-max_length_input = example_input_batch.shape[1]
-max_length_output = example_target_batch.shape[1]
+vocab_inp_size = len(lang_tokenizer.word_index)+2
+vocab_tar_size = len(lang_tokenizer.word_index)+2
+max_length_input = data_dict['context'].shape[1]
+max_length_output = data_dict['target'].shape[1]
 
 embedding_dim = D
 units = 1024
@@ -77,15 +64,18 @@ num_tokens = vocab_size + 2
 # %%
 BATCH_SIZE = 128
 # Model
-encoder = Encoder(vocab_inp_size, D, D, BATCH_SIZE)
+encoder = Encoder(vocab_inp_size, D, D, BATCH_SIZE,
+                 language_tokenizer=lang_tokenizer)
+
 decoder = Decoder(vocab_inp_size, D, D, BATCH_SIZE,
+                 language_tokenizer=lang_tokenizer,
                   max_length_input=max_length_input,
                   max_length_output=max_length_output)
 
 optimizer = keras.optimizers.Adam()
 
 
-# @tf.function
+@tf.function
 def train_step(inp, targ, enc_hidden):
     loss = 0
 
@@ -128,7 +118,10 @@ for epoch in tqdm(range(EPOCHS)):
     total_loss = 0
     # print(enc_hidden[0].shape, enc_hidden[1].shape)
 
-    for (batch, (inp, targ)) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
+    for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
+        inp = [data_dict['context'], data_dict['question']]
+        targ = data_dict['target']
+
         batch_loss = train_step(inp, targ, enc_hidden)
         total_loss += batch_loss
 
