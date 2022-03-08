@@ -6,8 +6,8 @@ from src.knowledge_graph.knowledge_graph import knowledge_grapher
 data = pd.read_csv(r'final_dataset_clean_v2 .tsv', delimiter = '\t')
 
 grapher = knowledge_grapher(data)
-# data_kgf = grapher.extractTriples(-1)
-# grapher.buildGraph(data_kgf)
+data_kgf = grapher.extractTriples(-1)
+grapher.buildGraph(data_kgf)
 
 grapher.load_data(r'pykeen_data\data_kgf.tsv')
 

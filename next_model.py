@@ -36,7 +36,7 @@ training_iterations_count = 400000
 
 #%%
 # data = pd.read_excel(r'RoITD\final_dataset_clean_v2.xlsx', skiprows=[0])
-data = pd.read_csv(r'final_dataset_clean_v2 .tsv', delimiter='\t', encoding="utf-8")
+data = pd.read_csv('final_dataset_clean_v2 .tsv', delimiter='\t', encoding="utf-8")
 data_dict = du.parse_input(data, 0.7, 0.2)
 
 vectorizer = TextVectorization(max_tokens=vocab_size, output_sequence_length=sequence_length)

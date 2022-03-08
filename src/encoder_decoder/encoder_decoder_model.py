@@ -46,6 +46,7 @@ class Decoder(tf.keras.Model):
         # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
         #                 embeddings_initializer=keras.initializers.Constant(self.embedding_matrix),
         #                 trainable=False, name = "Embedder")
+        
         self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
 
         # Final Dense layer on which softmax will be applied

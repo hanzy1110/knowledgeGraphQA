@@ -14,7 +14,7 @@ import io
 import time
 
 class QADataset:
-    def __init__(self, file_path, problem_type='en-spa' ):
+    def __init__(self, file_path):
         self.problem_type = 'en-spa'
         self.inp_lang_tokenizer = None
         self.targ_lang_tokenizer = None
@@ -79,15 +79,21 @@ class QADataset:
         # creating cleaned input, output pairs
         input_info, answers = self.create_dataset(self.file_path, num_examples)
 
-        input_tensor, inp_lang_tokenizer = self.tokenize(input_info)
-        target_tensor, targ_lang_tokenizer = self.tokenize(answers)
+        lang_tokenizer = keras.preprocessing.text.Tokenizer(filters='', oov_token='<OOV>')
+        lang_tokenizer.fit_on_texts(input_info)
 
-        return input_tensor, target_tensor, inp_lang_tokenizer, targ_lang_tokenizer
+        input_tensor = lang_tokenizer.texts_to_sequences(input_info)
+        input_tensor = keras.preprocessing.sequence.pad_sequences(input_tensor, padding='post')
+
+        target_tensor = lang_tokenizer.texts_to_sequences(answers)
+        target_tensor = keras.preprocessing.sequence.pad_sequences(target_tensor, padding='post')
+
+        return input_tensor, target_tensor, lang_tokenizer
 
     def call(self, num_examples, BUFFER_SIZE, BATCH_SIZE):
         # file_path = download_nmt()
 
-        input_tensor, target_tensor, self.inp_lang_tokenizer, self.targ_lang_tokenizer = self.load_dataset(num_examples)
+        input_tensor, target_tensor, self.inp_lang_tokenizer = self.load_dataset(num_examples)
         # print(input_tensor.shape)
         # print(target_tensor.shape)
 
@@ -99,4 +105,30 @@ class QADataset:
         val_dataset = tf.data.Dataset.from_tensor_slices((input_tensor_val, target_tensor_val))
         val_dataset = val_dataset.batch(BATCH_SIZE, drop_remainder=True)
 
-        return train_dataset, val_dataset, self.inp_lang_tokenizer, self.targ_lang_tokenizer
+        return train_dataset, val_dataset, self.inp_lang_tokenizer
+
+if __name__  == '__main__':
+    import random  
+    import string  
+
+    def specific_string(length:int) -> str:  
+        # Generate random string
+        sample_string = 'pqrstuvwxy' # define the specific string  
+        # define the condition for random string  
+        result = ''.join((random.choice(sample_string)) for _ in range(length))  
+
+        return result
+
+    _max_word_size = 25
+    _max_context_size = 10
+
+
+    with open("ramdom_dataset.txt", "w") as f:
+
+        random_context = [specific_string(random.randint(0,_max_word_size)) for _ in range(0,random.randint(0,_max_phrase_size))]
+        
+        random_context.append('?')
+        random_context.append('\n')
+
+        for _string in radom_context:
+            f.
