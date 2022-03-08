@@ -130,5 +130,5 @@ if __name__  == '__main__':
         random_context.append('?')
         random_context.append('\n')
 
-        for _string in radom_context:
-            f.
+        for _string in random_context:
+            pass

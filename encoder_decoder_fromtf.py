@@ -12,6 +12,8 @@ from tqdm import tqdm
 import src.utils.dataset_utils as du
 from src.utils.dataset_creators import QADataset
 
+
+
 vocab_size = 4096
 sequence_length = 10
 
@@ -36,110 +38,116 @@ weight_decay = 0.00000001
 # but makes training slower. Don't make this larger than leraning_rate.
 training_iterations_count = 400000
 
-# %%
-path = 'final_dataset_clean_v2 .tsv'
+with tf.device("/GPU:0"):
 
-data = pd.read_csv(path, delimiter='\t', encoding="utf-8")
-data_dict = du.parse_input(data, 0.7, 0.2)
+    # %%
+    path = 'final_dataset_clean_v2 .tsv'
 
-vectorizer = TextVectorization(
-    max_tokens=vocab_size, output_sequence_length=sequence_length)
+    data = pd.read_csv(path, delimiter='\t', encoding="utf-8")
+    data_dict = du.parse_input(data, 0.7, 0.2)
 
-dataset_creator = QADataset(path)
-num_examples = -1
-BUFFER_SIZE = 32000
-BATCH_SIZE = 128
+    vectorizer = TextVectorization(
+        max_tokens=vocab_size, output_sequence_length=sequence_length)
 
-train_dataset, val_dataset, lang_tokenizer = dataset_creator.call(
-    num_examples, BUFFER_SIZE, BATCH_SIZE)
-# %%
-# a = next(iter(train_dataset))
-# vectorizer.adapt(a[0])
-# voc = vectorizer.get_vocabulary()
-# num_tokens = len(voc) + 2
-# word_index = dict(zip(voc, range(len(voc))))
+    dataset_creator = QADataset(path)
+    num_examples = -1
+    BUFFER_SIZE = 32000
+    BATCH_SIZE = 128
 
-
-example_input_batch, example_target_batch = next(iter(train_dataset))
-print(example_input_batch.shape, example_target_batch.shape)
-
-vocab_inp_size = len(lang_tokenizer.word_index)+1
-vocab_tar_size = len(lang_tokenizer.word_index)+1
-max_length_input = example_input_batch.shape[1]
-max_length_output = example_target_batch.shape[1]
-
-embedding_dim = D
-units = 1024
-steps_per_epoch = num_examples//BATCH_SIZE
-
-num_tokens = vocab_size + 2
-
-# %%
-BATCH_SIZE = 128
-# Model
-encoder = Encoder(vocab_inp_size, D, D, BATCH_SIZE)
-decoder = Decoder(vocab_inp_size, D, D, BATCH_SIZE,
-                  max_length_input=max_length_input,
-                  max_length_output=max_length_output)
-
-optimizer = keras.optimizers.Adam()
+    train_dataset, val_dataset, lang_tokenizer = dataset_creator.call(
+        num_examples, BUFFER_SIZE, BATCH_SIZE)
+    # %%
+    # a = next(iter(train_dataset))
+    # vectorizer.adapt(a[0])
+    # voc = vectorizer.get_vocabulary()
+    # num_tokens = len(voc) + 2
+    # word_index = dict(zip(voc, range(len(voc))))
 
 
-# @tf.function
-def train_step(inp, targ, enc_hidden):
-    loss = 0
+    example_input_batch, example_target_batch = next(iter(train_dataset))
+    print(example_input_batch.shape, example_target_batch.shape)
 
-    with tf.GradientTape() as tape:
-        enc_output, enc_h, enc_c = encoder(inp, enc_hidden)
+    vocab_inp_size = len(lang_tokenizer.word_index)+1
+    vocab_tar_size = len(lang_tokenizer.word_index)+1
+    max_length_input = example_input_batch.shape[1]
+    max_length_output = example_target_batch.shape[1]
 
-        dec_input = targ[:, :-1]  # Ignore <end> token
-        real = targ[:, 1:]         # ignore <start> token
+    embedding_dim = D
+    units = 1024
+    steps_per_epoch = num_examples//BATCH_SIZE
 
-        # Set the AttentionMechanism object with encoder_outputs
-        decoder.attention_mechanism.setup_memory(enc_output)
+    num_tokens = vocab_size + 2
 
-        # Create AttentionWrapperState as initial_state for decoder
-        decoder_initial_state = decoder.build_initial_state(
-            BATCH_SIZE, [enc_h, enc_c], tf.float32)
-        pred = decoder(dec_input, decoder_initial_state)
-        logits = pred.rnn_output
-        loss = loss_function(real, logits)
+    # %%
+    BATCH_SIZE = 128
+    # Model
+    encoder = Encoder(vocab_inp_size, D, D, BATCH_SIZE)
+    decoder = Decoder(vocab_inp_size, D, D, BATCH_SIZE,
+                    max_length_input=max_length_input,
+                    max_length_output=max_length_output)
 
-        variables = encoder.trainable_variables + decoder.trainable_variables
-        gradients = tape.gradient(loss, variables)
-        optimizer.apply_gradients(zip(gradients, variables))
-
-    return loss
+    optimizer = keras.optimizers.Adam()
 
 
-checkpoint_dir = './training_checkpoints'
-checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
-checkpoint = tf.train.Checkpoint(optimizer=optimizer,
-                                 encoder=encoder,
-                                 decoder=decoder)
+    @tf.function
+    def train_step(inp, targ, enc_hidden):
+        loss = 0
+
+        with tf.GradientTape() as tape:
+            enc_output, enc_h, enc_c = encoder(inp, enc_hidden)
+
+            dec_input = targ[:, :-1]  # Ignore <end> token
+            real = targ[:, 1:]         # ignore <start> token
+
+            # Set the AttentionMechanism object with encoder_outputs
+            decoder.attention_mechanism.setup_memory(enc_output)
+
+            # Create AttentionWrapperState as initial_state for decoder
+            decoder_initial_state = decoder.build_initial_state(
+                BATCH_SIZE, [enc_h, enc_c], tf.float32)
+            pred = decoder(dec_input, decoder_initial_state)
+            logits = pred.rnn_output
+            loss = loss_function(real, logits)
+
+            variables = encoder.trainable_variables + decoder.trainable_variables
+            gradients = tape.gradient(loss, variables)
+            optimizer.apply_gradients(zip(gradients, variables))
+
+        return loss
 
 
-EPOCHS = 10
+    checkpoint_dir = './training_checkpoints'
+    checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+    checkpoint = tf.train.Checkpoint(optimizer=optimizer,
+                                    encoder=encoder,
+                                    decoder=decoder)
 
-for epoch in tqdm(range(EPOCHS)):
-    start = time.time()
 
-    enc_hidden = encoder.initialize_hidden_state()
-    total_loss = 0
-    # print(enc_hidden[0].shape, enc_hidden[1].shape)
+    EPOCHS = 10
 
-    for (batch, (inp, targ)) in enumerate(train_dataset.take(steps_per_epoch)):
-        batch_loss = train_step(inp, targ, enc_hidden)
-        total_loss += batch_loss
+    for epoch in tqdm(range(EPOCHS)):
+        
+        # TODO: Implement training loop
+        # FIXME: Implement training loop
+        
+        start = time.time()
 
-        if batch % 100 == 0:
-            print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
-                                                         batch,
-                                                         batch_loss.numpy()))
-    # saving (checkpoint) the model every 2 epochs
-    if (epoch + 1) % 2 == 0:
-        checkpoint.save(file_prefix=checkpoint_prefix)
+        enc_hidden = encoder.initialize_hidden_state()
+        total_loss = 0
+        # print(enc_hidden[0].shape, enc_hidden[1].shape)
 
-    print('Epoch {} Loss {:.4f}'.format(epoch + 1,
-                                        total_loss / steps_per_epoch))
-    print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
+        for (batch, (inp, targ)) in enumerate(train_dataset.take(steps_per_epoch)):
+            batch_loss = train_step(inp, targ, enc_hidden)
+            total_loss += batch_loss
+
+            if batch % 100 == 0:
+                print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
+                                                            batch,
+                                                            batch_loss.numpy()))
+        # saving (checkpoint) the model every 2 epochs
+        if (epoch + 1) % 2 == 0:
+            checkpoint.save(file_prefix=checkpoint_prefix)
+
+        print('Epoch {} Loss {:.4f}'.format(epoch + 1,
+                                            total_loss / steps_per_epoch))
+        print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
