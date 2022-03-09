@@ -12,9 +12,6 @@ from tqdm import tqdm
 import src.utils.dataset_utils as du
 from src.utils.dataset_creators import QADataset
 
-
-
-vocab_size = 4096
 sequence_length = 10
 
 # The number of dimensions used to store data passed between recurrent layers in the network.
@@ -23,20 +20,6 @@ recurrent_cell_size = 128
 D = 128
 # How quickly the network learns. Too high, and we may run into numeric instability
 # or other issues.
-learning_rate = 0.005
-# Dropout probabilities. For a description of dropout and what these probabilities are,
-# see Entailment with TensorFlow.
-input_p, output_p = 0.5, 0.5
-# How many questions we train on at a time.
-batch_size = 128
-# Number of passes in episodic memory. We'll get to this later.
-passes = 4
-# Feed Forward layer sizes: the number of dimensions used to store data passed from feed-forward layers.
-ff_hidden_size = 256
-weight_decay = 0.00000001
-# The strength of our regularization. Increase to encourage sparsity in episodic memory,
-# but makes training slower. Don't make this larger than leraning_rate.
-training_iterations_count = 400000
 
 path = 'final_dataset_clean_v2 .tsv'
 
@@ -122,20 +105,20 @@ for epoch in tqdm(range(EPOCHS)):
     total_loss = 0
     # print(enc_hidden[0].shape, enc_hidden[1].shape)
 
-for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
-    inp = [data_dict['context'], data_dict['question']]
-    targ = data_dict['target']
+    for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
+        inp = [data_dict['context'], data_dict['question']]
+        targ = data_dict['target']
 
-    batch_loss = train_step(inp, targ, enc_hidden)
-    total_loss += batch_loss
+        batch_loss = train_step(inp, targ, enc_hidden)
+        total_loss += batch_loss
 
-    if batch % 100 == 0:
-        print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
-                                                    batch,
-                                                    batch_loss.numpy()))
-    # saving (checkpoint) the model every 2 epochs
-    if (epoch + 1) % 2 == 0:
-        checkpoint.save(file_prefix=checkpoint_prefix)
+        if batch % 100 == 0:
+            print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
+                                                        batch,
+                                                        batch_loss.numpy()))
+        # saving (checkpoint) the model every 2 epochs
+        if (epoch + 1) % 2 == 0:
+            checkpoint.save(file_prefix=checkpoint_prefix)
 
     print('Epoch {} Loss {:.4f}'.format(epoch + 1,
                                         total_loss / steps_per_epoch))
