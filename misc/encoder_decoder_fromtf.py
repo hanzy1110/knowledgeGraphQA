@@ -18,8 +18,6 @@ sequence_length = 10
 recurrent_cell_size = 128
 # The number of dimensions in our word vectorizations.
 D = 128
-# How quickly the network learns. Too high, and we may run into numeric instability
-# or other issues.
 
 path = 'final_dataset_clean_v2 .tsv'
 with tf.device('/GPU:0'):
@@ -44,7 +42,6 @@ with tf.device('/GPU:0'):
     units = 1024
     steps_per_epoch = num_examples//BATCH_SIZE
 
-    # %%
     BATCH_SIZE = 128
     # Model
     encoder = Encoder(vocab_inp_size, D, D, BATCH_SIZE,
