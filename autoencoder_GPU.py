@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 from src.encoder_decoder.encoder_decoder_model import AutoEncoder, loss_function
 from tqdm import tqdm,trange
 
@@ -75,7 +74,7 @@ with tf.device('/GPU:0'):
 
     EPOCHS = 3
 
-    checkpointer = keras.callbacks.ModelCheckpoint('training_checkpoints')
+    checkpointer = keras.callbacks.ModelCheckpoint(filepath='training_checkpoints', save_weights_only=False)
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
     _callbacks = [checkpointer, tensorboard_callback]
 
@@ -120,8 +119,8 @@ with tf.device('/GPU:0'):
                                                             batch_loss.numpy()))
             # saving (checkpoint) the model every 2 epochs
             if (epoch + 1) % 2 == 0:
-                callbacks.on_epoch_end()
-                
+                callbacks.on_epoch_end(epoch=epoch, logs=logs)
+
         print('Epoch {} Loss {:.4f}'.format(epoch + 1,
                                             total_loss / steps_per_epoch))
         print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
