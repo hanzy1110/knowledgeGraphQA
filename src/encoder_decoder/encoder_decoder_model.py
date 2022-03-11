@@ -131,7 +131,8 @@ class AutoEncoder(keras.Model):
         self.decoder = Decoder(vocab_size, embedding_dim, dec_units, batch_sz, max_length_input,
                  max_length_output, language_tokenizer, attention_type)
 
-    def call(self, inputs, initial_state):
+    def call(self, inputs):
+        initial_state = self.encoder.initialize_hidden_state()
         enc_output, enc_h, enc_c = self.encoder(inputs[0], initial_state)
 
         dec_input = inputs[1][:, :-1]  # Ignore <end> token
