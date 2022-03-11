@@ -7,7 +7,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 from src.encoder_decoder.encoder_decoder_model import AutoEncoder, loss_function
-from tqdm import tqdm,trange
+from tqdm import tqdm, trange
 
 import src.utils.dataset_utils as du
 from src.utils.dataset_creators import QADataset
@@ -30,7 +30,8 @@ train_dataset, val_dataset, lang_tokenizer = dataset_creator.call(
     num_examples, BUFFER_SIZE, BATCH_SIZE)
 
 data_dict = next(iter(train_dataset))
-print(data_dict['context'].shape, data_dict['question'].shape, data_dict['target'].shape)
+print(data_dict['context'].shape,
+      data_dict['question'].shape, data_dict['target'].shape)
 
 vocab_inp_size = len(lang_tokenizer.word_index)+2
 vocab_tar_size = len(lang_tokenizer.word_index)+2
@@ -46,20 +47,20 @@ BATCH_SIZE = 128
 with tf.device('/GPU:0'):
     # Model
     autoencoder = AutoEncoder(vocab_inp_size, D, D, BATCH_SIZE,
-                    language_tokenizer=lang_tokenizer,
-                    max_length_input=max_length_input,
-                    max_length_output=max_length_output)
+                              language_tokenizer=lang_tokenizer,
+                              max_length_input=max_length_input,
+                              max_length_output=max_length_output)
 
     optimizer = keras.optimizers.Adam()
 
+    # @tf.function
 
-    @tf.function
-    def train_step(inp, targ, enc_hidden):
+    def train_step(inp, targ):
         loss = 0
 
         with tf.GradientTape() as tape:
 
-            pred = autoencoder([inp, targ], enc_hidden)
+            pred = autoencoder([inp, targ])
             real = targ[:, 1:]         # ignore <start> token
 
             logits = pred.rnn_output
@@ -73,11 +74,12 @@ with tf.device('/GPU:0'):
 
         return loss
 
-    EPOCHS = 3
+    EPOCHS = 10
 
     checkpointer = keras.callbacks.ModelCheckpoint('training_checkpoints')
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
-    _callbacks = [checkpointer, tensorboard_callback]
+    # _callbacks = [checkpointer, tensorboard_callback]
+    _callbacks = [tensorboard_callback]
 
     callbacks = keras.callbacks.CallbackList(
         _callbacks, add_history=True, model=autoencoder)
@@ -99,7 +101,7 @@ with tf.device('/GPU:0'):
 
         start = time.time()
 
-        enc_hidden = autoencoder.encoder.initialize_hidden_state()
+        # enc_hidden = autoencoder.encoder.initialize_hidden_state()
         total_loss = 0
         # print(enc_hidden[0].shape, enc_hidden[1].shape)
 
@@ -111,21 +113,21 @@ with tf.device('/GPU:0'):
             inp = [data_dict['context'], data_dict['question']]
             targ = data_dict['target']
 
-            batch_loss = train_step(inp, targ, enc_hidden)
+            batch_loss = train_step(inp, targ)
             total_loss += batch_loss
 
             if batch % 100 == 0:
                 print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
-                                                            batch,
-                                                            batch_loss.numpy()))
+                                                             batch,
+                                                             batch_loss.numpy()))
             # saving (checkpoint) the model every 2 epochs
             if (epoch + 1) % 2 == 0:
-                callbacks.on_epoch_end()
-                
+                # callbacks.on_epoch_end(epoch=epoch,logs=logs, )
+                autoencoder.save_weights('training_checkpoints/ckpt')
+
         print('Epoch {} Loss {:.4f}'.format(epoch + 1,
                                             total_loss / steps_per_epoch))
         print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
-
 
     callbacks.on_train_end(logs=logs)
 
