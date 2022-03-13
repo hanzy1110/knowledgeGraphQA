@@ -1,9 +1,10 @@
+import pandas as pd
 import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow_addons as tfa
 from ..utils.dataset_utils import get_embedding_matrix
 from ..utils.dataset_creators import QADataset
-
+from ..knowledge_graph.knowledge_graph import knowledge_grapher
 
 class Encoder(keras.Model):
     def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz, language_tokenizer: keras.preprocessing.text.Tokenizer):
@@ -146,6 +147,48 @@ class AutoEncoder(keras.Model):
         self.batch_sz , [enc_h, enc_c], tf.float32)
         
         return self.decoder(dec_input, decoder_initial_state)
+
+class AnchorLoss():
+    def __init__(self) -> None:
+
+        data = pd.read_csv('final_dataset_clean_v2 .tsv', delimiter = '\t')
+        self.grapher = knowledge_grapher(data)
+        self.grapher.load_data('pykeen_data/data_kgf.tsv')
+        self.grapher.compute_centrality()
+        self.grapher.get_centers()
+        self.grapher.load_embeddings('KGWeights/weights.csv')
+        self.grapher.map_centers_anchors('in_degree')
+#O(n**3) not nice
+    def inner_loop(self, embedding):
+        aux = []
+        for key, arrdict in self.grapher.mean_anchor_dict.items():
+            center = tf.convert_to_tensor(arrdict['center'])
+            anchor = tf.convert_to_tensor(arrdict['anchor'])
+
+            d1 = tf.norm(center-embedding)
+            d2 = tf.norm(center-anchor)
+            aux.append(d1+d2)
+
+        aux = tf.convert_to_tensor(aux)
+        return tf.reduce_sum(aux)
+
+    def mid_loop(self, vect):
+        aux = []
+        for embedding in tf.unstack(vect):
+            aux.append(self.inner_loop(embedding))
+
+        aux = tf.convert_to_tensor(aux)
+        return tf.reduce_sum(aux)
+        
+    def loss(self, batch:tf.Tensor):
+        batch_loss = []
+        for vect in tf.unstack(batch):
+            batch_loss.append(self.mid_loop(vect))
+
+        batch_loss = tf.convert_to_tensor(batch_loss)
+        return tf.reduce_mean(batch_loss)
+
+
 
 
 def loss_function(real, pred):

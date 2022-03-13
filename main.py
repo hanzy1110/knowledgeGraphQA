@@ -6,15 +6,17 @@ from src.knowledge_graph.knowledge_graph import knowledge_grapher
 data = pd.read_csv(r'final_dataset_clean_v2 .tsv', delimiter = '\t')
 
 grapher = knowledge_grapher(data)
-data_kgf = grapher.extractTriples(-1)
-grapher.buildGraph(data_kgf)
+# data_kgf = grapher.extractTriples(-1)
+# grapher.buildGraph(data_kgf)
 
-grapher.load_data(r'pykeen_data\data_kgf.tsv')
+grapher.load_data('pykeen_data/data_kgf.tsv')
 
 #%%
 grapher.compute_centrality()
 grapher.get_centers()
-
+grapher.load_embeddings('KGWeights/weights.csv')
+#%%
+grapher.map_centers_anchors('in_degree')
 #%%
 #grapher.prepare_data(data_kgf)
 #grapher.plot_graph()
