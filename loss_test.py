@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow.keras as keras
 from src.encoder_decoder.encoder_decoder_model import AutoEncoder, AnchorLoss
 from tqdm import tqdm, trange
@@ -14,9 +15,9 @@ from src.utils.dataset_creators import QADataset
 sequence_length = 10
 
 # The number of dimensions used to store data passed between recurrent layers in the network.
-recurrent_cell_size = 128
+recurrent_cell_size = 10
 # The number of dimensions in our word vectorizations.
-D = 128
+D = 14
 
 path = 'final_dataset_clean_v2 .tsv'
 
@@ -42,7 +43,6 @@ embedding_dim = D
 units = 1024
 steps_per_epoch = num_examples//BATCH_SIZE
 
-BATCH_SIZE = 128
 # Model
 autoencoder = AutoEncoder(vocab_inp_size, D, D, BATCH_SIZE,
                             language_tokenizer=lang_tokenizer,
@@ -59,9 +59,12 @@ for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
     inp = [data_dict['context'], data_dict['question']]
     targ = data_dict['target']
     
-    pred = autoencoder([inp, targ])
-    logits = pred.rnn_output
+    pred:tfa.seq2seq.BasicDecoderOutput = autoencoder([inp, targ])
 
-    batch_loss = anchorloss.loss(logits)
+    sequences = pred.sample_id
+    sequences = autoencoder.encoder.embedding(sequences)
+
+    batch_loss = anchorloss.loss(sequences)
     total_loss += batch_loss
     
+# %%

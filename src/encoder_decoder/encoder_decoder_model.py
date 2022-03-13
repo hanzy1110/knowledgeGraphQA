@@ -162,8 +162,8 @@ class AnchorLoss():
     def inner_loop(self, embedding):
         aux = []
         for key, arrdict in self.grapher.mean_anchor_dict.items():
-            center = tf.convert_to_tensor(arrdict['center'])
-            anchor = tf.convert_to_tensor(arrdict['anchor'])
+            center = tf.convert_to_tensor(arrdict['center'], dtype=tf.float32)
+            anchor = tf.convert_to_tensor(arrdict['anchor'], dtype=tf.float32)
 
             d1 = tf.norm(center-embedding)
             d2 = tf.norm(center-anchor)
@@ -214,7 +214,7 @@ def beam_evaluate_sentence(sentence: str, units: int,
     sentence = dataset_creator.preprocess_sentence(sentence)
 
     inputs = [lang_tokenizer.word_index[i] for i in sentence.split(' ')]
-    inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs],
+    inputs = keras.preprocessing.sequence.pad_sequences([inputs],
                                                            maxlen=max_length_input,
                                                            padding='post')
     inputs = tf.convert_to_tensor(inputs)
