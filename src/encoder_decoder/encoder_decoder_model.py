@@ -27,7 +27,7 @@ class Encoder(keras.Model):
         self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
                                                 embeddings_initializer=keras.initializers.Constant(
                                                     self.embedding_matrix),
-                                                trainable=False, name="Embedder")
+                                                trainable=True, name="Embedder")
 
         # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
         ##-------- LSTM layer in Encoder ------- ##
@@ -68,7 +68,7 @@ class Decoder(tf.keras.Model):
         self.embedding = keras.layers.Embedding(vocab_size, embedding_dim,
                                                 embeddings_initializer=keras.initializers.Constant(
                                                     self.embedding_matrix),
-                                                trainable=False, name="Embedder")
+                                                trainable=True, name="Embedder")
 
         # self.embedding = keras.layers.Embedding(vocab_size, embedding_dim)
 
@@ -225,26 +225,38 @@ def loss_function(real, pred):
     loss = tf.reduce_mean(loss)
     return loss
 
-
-def beam_evaluate_sentence(sentence: str, units: int,
-                           dataset_creator: QADataset, lang_tokenizer,
-                           encoder: Encoder, decoder: Decoder,
-                           max_length_input: int, max_length_output: int,
-                           beam_width=3):
-
-    sentence = dataset_creator.preprocess_sentence(sentence)
+def helper2(sentence:str, dataset_creator:QADataset, lang_tokenizer, max_length_input):
+    question = dataset_creator.preprocess_sentence(question)
 
     inputs = [lang_tokenizer.word_index[i] for i in sentence.split(' ')]
     inputs = keras.preprocessing.sequence.pad_sequences([inputs],
                                                            maxlen=max_length_input,
                                                            padding='post')
     inputs = tf.convert_to_tensor(inputs)
-    inference_batch_size = inputs.shape[0]
+    return inputs
+
+
+def beam_evaluate_sentence(context: str, question:str, units: int,
+                           dataset_creator: QADataset, lang_tokenizer,
+                           autoencoder:AutoEncoder,
+                           max_length_input: int, max_length_output: int,
+                           beam_width=3):
+
+    # context = helper2(context, dataset_creator=dataset_creator, 
+    #                 lang_tokenizer=lang_tokenizer, 
+    #                 max_length_input=max_length_input)
+    # question = helper2(question, dataset_creator=dataset_creator, 
+    #                 lang_tokenizer=lang_tokenizer, 
+    #                 max_length_input=max_length_input)
+    
+    inference_batch_size = context.shape[0]
     result = ''
 
     enc_start_state = [tf.zeros((inference_batch_size, units)), tf.zeros(
         (inference_batch_size, units))]
-    enc_out, enc_h, enc_c = encoder(inputs, enc_start_state)
+    inputs = [context, question]
+
+    enc_out, enc_h, enc_c = autoencoder.encoder(inputs, enc_start_state)
 
     dec_h = enc_h
     dec_c = enc_c
@@ -260,22 +272,22 @@ def beam_evaluate_sentence(sentence: str, units: int,
     # The initial state created with get_initial_state above contains a cell_state value containing properly tiled final state from the encoder.
 
     enc_out = tfa.seq2seq.tile_batch(enc_out, multiplier=beam_width)
-    decoder.attention_mechanism.setup_memory(enc_out)
+    autoencoder.decoder.attention_mechanism.setup_memory(enc_out)
     print(
         "beam_with * [batch_size, max_length_input, rnn_units] :  3 * [1, 16, 1024]] :", enc_out.shape)
 
     # set decoder_inital_state which is an AttentionWrapperState considering beam_width
     hidden_state = tfa.seq2seq.tile_batch(
         [enc_h, enc_c], multiplier=beam_width)
-    decoder_initial_state = decoder.rnn_cell.get_initial_state(
+    decoder_initial_state = autoencoder.decoder.rnn_cell.get_initial_state(
         batch_size=beam_width*inference_batch_size, dtype=tf.float32)
     decoder_initial_state = decoder_initial_state.clone(
         cell_state=hidden_state)
 
     # Instantiate BeamSearchDecoder
     decoder_instance = tfa.seq2seq.BeamSearchDecoder(
-        decoder.rnn_cell, beam_width=beam_width, output_layer=decoder.fc)
-    decoder_embedding_matrix = decoder.embedding.variables[0]
+        autoencoder.decoder.rnn_cell, beam_width=beam_width, output_layer=autoencoder.decoder.fc)
+    decoder_embedding_matrix = autoencoder.decoder.embedding_matrix
 
     # The BeamSearchDecoder object's call() function takes care of everything.
     outputs, final_state, sequence_lengths = decoder_instance(
@@ -296,18 +308,30 @@ def beam_evaluate_sentence(sentence: str, units: int,
     return final_outputs.numpy(), beam_scores.numpy()
 
 
-def beam_translate(sentence, inp_lang):
-    result, beam_scores = beam_evaluate_sentence(sentence)
+def beam_translate(context: str, question:str,answer:str, units: int,
+                           dataset_creator: QADataset, lang_tokenizer,
+                           autoencoder:AutoEncoder,
+                           max_length_input: int, max_length_output: int,
+                           beam_width=3):
+
+    result, beam_scores = beam_evaluate_sentence(context, question, units,
+                           dataset_creator,lang_tokenizer=lang_tokenizer,
+                           autoencoder=autoencoder,
+                            max_length_input=max_length_input, max_length_output=max_length_output,
+                           beam_width=beam_width)
 
     print(result.shape, beam_scores.shape)
 
     for beam, score in zip(result, beam_scores):
 
         print(beam.shape, score.shape)
-        output = inp_lang.sequences_to_texts(beam)
+        output = lang_tokenizer.sequences_to_texts(beam)
         output = [a[:a.index('<end>')] for a in output]
         beam_score = [a.sum() for a in score]
-        print('Input: %s' % (sentence))
+
+        print(f'Context : {next(lang_tokenizer.sequences_to_texts_generator(context.numpy()))}'.replace("<OOV>", ''))
+        print(f'Question {next(lang_tokenizer.sequences_to_texts_generator(question.numpy()))}'.replace("<OOV>", ''))
+        print(f'Expected Answer: {next(lang_tokenizer.sequences_to_texts_generator(answer.numpy()))}'.replace("<OOV>", ''))
 
         for i in range(len(output)):
             print('{} Predicted translation: {}  {}'.format(
