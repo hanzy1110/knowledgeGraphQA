@@ -69,12 +69,7 @@ for (batch, data_dict) in tqdm(enumerate(val_dataset.take(steps_per_epoch))):
     context = data_dict['context']
     question = data_dict['question']
     answer = data_dict['target']
-    # context = lang_tokenizer.sequences_to_texts_generator(context.numpy())
-    # question = lang_tokenizer.sequences_to_texts_generator(question.numpy())
-    # answer = lang_tokenizer.sequences_to_texts_generator(answer.numpy())
-    # print('context', context) 
-    # print('question', question) 
-    # print('answer', answer)
+    
     beam_translate(context, question, answer, D,
                 dataset_creator = dataset_creator, lang_tokenizer = lang_tokenizer, 
                 autoencoder = autoencoder, 
