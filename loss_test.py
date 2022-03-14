@@ -48,7 +48,8 @@ autoencoder = AutoEncoder(vocab_inp_size, D, D, BATCH_SIZE,
                             language_tokenizer=lang_tokenizer,
                             max_length_input=max_length_input,
                             max_length_output=max_length_output)
-anchorloss = AnchorLoss()
+
+anchorloss = AnchorLoss(max_output_length=max_length_output, batch_size=BATCH_SIZE)
 
 # enc_hidden = autoencoder.encoder.initialize_hidden_state()
 total_loss = 0
@@ -66,5 +67,5 @@ for (batch, data_dict) in tqdm(enumerate(train_dataset.take(steps_per_epoch))):
 
     batch_loss = anchorloss.loss(sequences)
     total_loss += batch_loss
-    
+    print(batch_loss, total_loss) 
 # %%
