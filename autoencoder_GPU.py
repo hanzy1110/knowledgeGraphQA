@@ -17,7 +17,7 @@ sequence_length = 10
 # The number of dimensions used to store data passed between recurrent layers in the network.
 recurrent_cell_size = 128
 # The number of dimensions in our word vectorizations.
-D = 128
+D = 14
 
 path = 'final_dataset_clean_v2 .tsv'
 
@@ -55,8 +55,7 @@ with tf.device('/GPU:0'):
     anchorloss = AnchorLoss(max_output_length=max_length_output, batch_size=BATCH_SIZE)
     optimizer = keras.optimizers.Adam()
 
-    # @tf.function
-
+    @tf.function
     def train_step(inp, targ):
         loss = 0
 
