@@ -150,7 +150,7 @@ def custom_loss(x_logit, y_true):
 
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
 
-embedding_dim = 128
+embedding_dim = 14
 word2vec = Word2Vec(vocab_size, embedding_dim)
 word2vec.compile(optimizer='adam',
                  loss=keras.losses.CategoricalCrossentropy(from_logits=True),

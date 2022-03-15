@@ -4,8 +4,9 @@ import time
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow.keras as keras
-from src.encoder_decoder.encoder_decoder_model import AutoEncoder, loss_function
+from src.encoder_decoder.encoder_decoder_model import AutoEncoder, AnchorLoss, loss_function
 from tqdm import tqdm, trange
 
 import src.utils.dataset_utils as du
@@ -16,7 +17,7 @@ sequence_length = 10
 # The number of dimensions used to store data passed between recurrent layers in the network.
 recurrent_cell_size = 128
 # The number of dimensions in our word vectorizations.
-D = 128
+D = 14
 
 path = 'final_dataset_clean_v2 .tsv'
 
@@ -24,6 +25,7 @@ dataset_creator = QADataset(path)
 num_examples = -1
 BUFFER_SIZE = 32000
 BATCH_SIZE = 128
+BETA = 0.03
 
 train_dataset, val_dataset, lang_tokenizer = dataset_creator.call(
     num_examples, BUFFER_SIZE, BATCH_SIZE)
@@ -50,10 +52,10 @@ with tf.device('/GPU:0'):
                               max_length_input=max_length_input,
                               max_length_output=max_length_output)
 
+    anchorloss = AnchorLoss(max_output_length=max_length_output, batch_size=BATCH_SIZE)
     optimizer = keras.optimizers.Adam()
 
-    # @tf.function
-
+    @tf.function
     def train_step(inp, targ):
         loss = 0
 
@@ -63,8 +65,14 @@ with tf.device('/GPU:0'):
             real = targ[:, 1:]         # ignore <start> token
 
             logits = pred.rnn_output
-            loss = loss_function(real, logits)
+            pred:tfa.seq2seq.BasicDecoderOutput = autoencoder([inp, targ])
 
+            sequences = pred.sample_id
+            sequences = autoencoder.encoder.embedding(sequences)
+
+            anchLoss = anchorloss.loss(sequences)
+            loss = loss_function(real, logits)
+            loss += BETA * anchLoss
             # variables = encoder.trainable_variables + decoder.trainable_variables
             variables = autoencoder.trainable_variables
 

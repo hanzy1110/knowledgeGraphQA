@@ -1,18 +1,22 @@
 
-from typing import Tuple
+import os
 import spacy
-import pandas as pd
 import numpy as np
-from spacy.matcher import Matcher 
+import pandas as pd
 import matplotlib.pyplot as plot
-from tqdm import tqdm
 import networkx as ntx
+from tqdm import tqdm
+from typing import Tuple
+from spacy.matcher import Matcher 
+
+from node2vec import Node2Vec as n2v
 
 class knowledge_grapher():
-    def __init__(self, data, load_spacy:bool=False) -> None:
+    def __init__(self, data, embedding_dim:int=14, load_spacy:bool=False) -> None:
         if load_spacy:
             self.nlp = spacy.load("ro_core_news_sm")
         self.data = data
+        self.embedding_dim = embedding_dim
         
     def extract_entities(self, sents)->pd.DataFrame:
         # chunk one
@@ -138,9 +142,60 @@ class knowledge_grapher():
         in_degree_centers = in_sorted_dict[:max_centers]
         out_degree_centers = out_sorted_dict[:max_centers]
 
-        self.degree_adjacency = {u:self.graph[u] for u,_ in degree_centers}
-        self.in_degree_adjacency = {u:self.graph[u] for u,_ in in_degree_centers}
-        self.out_degree_adjacency = {u:self.graph[u] for u,_ in out_degree_centers}
+        degree_adjacency = {u:self.graph[u] for u,_ in degree_centers}
+        in_degree_adjacency = {u:self.graph[u] for u,_ in in_degree_centers}
+        out_degree_adjacency = {u:self.graph[u] for u,_ in out_degree_centers}
+
+        self.center_dict = {'degree':{'centers':degree_centers, 'adjacency': degree_adjacency},
+                            'in_degree':{'centers':in_degree_centers, 'adjacency': in_degree_adjacency},  
+                            'out_degree':{'centers':out_degree_centers, 'adjacency':out_degree_adjacency},}
+
+    def compute_embeddings(self, path_to_embeddings, WINDOW, MIN_COUNT, BATCH_WORDS):
+
+        g_emb = n2v(
+        self.graph,
+        dimensions=self.embedding_dim
+        )
+
+        mdl = g_emb.fit(
+            window=WINDOW,
+            min_count=MIN_COUNT,
+            batch_words=BATCH_WORDS
+        )
+        self.embedding_df = pd.DataFrame({str(n): mdl.wv.get_vector(str(n)) for n in self.graph.nodes()})
+
+        # self.embedding_df.set_index('Unnamed: 0', inplace=True)
+        self.embedding_df.to_csv(path_to_embeddings)
+
+
+    def load_embeddings(self, path_to_embeddings:str):
+
+        if os.path.exists(path_to_embeddings):
+           self.embedding_df = pd.read_csv(path_to_embeddings)
+        else:
+            WINDOW = 4 # Node2Vec fit window
+            MIN_COUNT = 1 # Node2Vec min. count
+            BATCH_WORDS = 10 # Node2Vec batch words
+
+            self.compute_embeddings(path_to_embeddings, WINDOW, MIN_COUNT, BATCH_WORDS )
+
+    def map_centers_anchors(self, _type:str):
+       _aux = self.center_dict[_type]
+       centers = _aux['centers'] 
+       adjacency = _aux['adjacency'] 
+       
+    #    self.load_embeddings()
+       self.mean_anchor_dict = {}
+       for center, _ in centers:
+            center_embedding = self.embedding_df[str(center)]
+            num_embeddings = len(list(adjacency[center].keys()))
+
+            adjacency_embeddings = np.ndarray((num_embeddings, self.embedding_dim))       
+            for i, (node, adj_dict) in enumerate(adjacency[center].items()):
+                adjacency_embeddings[i,:] = self.embedding_df[str(node)]
+            
+            self.mean_anchor_dict[center] = {'center': center_embedding.values, 'anchor':adjacency_embeddings.mean(axis = 0)} 
+
 
     def prepare_data(self, data_kgf:pd.DataFrame)->Tuple[pd.DataFrame]:
         

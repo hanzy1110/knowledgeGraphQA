@@ -31,7 +31,7 @@ def get_embedding_matrix(word_index:Dict[str,str])->np.ndarray:
     embeddings = get_word_embeddings()
 
     num_tokens = len(set(word_index.keys())) + 2
-    embedding_dim = 128
+    embedding_dim = 14
     hits = 0
     misses = 0
 
