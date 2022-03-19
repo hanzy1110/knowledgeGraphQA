@@ -150,67 +150,6 @@ class AutoEncoder(keras.Model):
         
         return self.decoder(dec_input, decoder_initial_state)
 
-class AnchorLoss():
-    def __init__(self, max_output_length, batch_size) -> None:
-
-        self.batch_size = batch_size
-        self.max_output_length = max_output_length
-        data = pd.read_csv('final_dataset_clean_v2 .tsv', delimiter = '\t')
-        self.grapher = knowledge_grapher(data)
-        self.grapher.load_data('pykeen_data/data_kgf.tsv')
-        self.grapher.compute_centrality()
-        self.grapher.get_centers()
-        self.grapher.load_embeddings('KGWeights/weights.csv')
-        self.grapher.map_centers_anchors('in_degree')
-        
-#O(n**3) not nice
-    def compute_denominator(self):
-        centers = [_dict['center'] for _, _dict in self.grapher.mean_anchor_dict.items()]
-        combinations_ = combinations(centers, 2)
-        d = 0
-        for arr1, arr2 in combinations_:
-            arr1 = tf.convert_to_tensor(arr1, dtype=tf.float32)
-            arr2 = tf.convert_to_tensor(arr2, dtype=tf.float32)
-            d += tf.norm(arr1-arr2)
-        return d
-
-    def inner_loop(self, embedding):
-        n = len(list(self.grapher.mean_anchor_dict.keys())) 
-        tensor = np.ndarray((n,)) 
-        for i, (key, arrdict) in enumerate(self.grapher.mean_anchor_dict.items()):
-            if helper(arrdict['anchor']): 
-                center = tf.convert_to_tensor(arrdict['center'], dtype=tf.float32)
-                anchor = tf.convert_to_tensor(arrdict['anchor'], dtype=tf.float32)
-
-                d1 = tf.norm(center-embedding)
-                d2 = tf.norm(center-anchor)
-                tensor[i] = d1+d2
-            else:
-                continue
-        return tf.reduce_sum(tf.convert_to_tensor(tensor))
-
-    def mid_loop(self, vect):
-        tensor = np.ndarray((self.max_output_length,)) 
-        for i, embedding in enumerate(tf.unstack(vect)):
-            tensor[i] = self.inner_loop(embedding)
-
-        return tf.reduce_sum(tf.convert_to_tensor(tensor))
-        
-    def loss(self, batch:tf.Tensor):
-        denominator = self.compute_denominator()
-        batch_loss = np.ndarray((self.batch_size,)) 
-        for i, vect in enumerate(tf.unstack(batch)):
-            batch_loss[i] = self.mid_loop(vect)
-
-        batch_loss = tf.convert_to_tensor(batch_loss)
-        return tf.reduce_mean(batch_loss)/tf.cast(denominator, dtype=tf.float64)
-
-def helper(arr):
-    if any(arr[~np.isnan(arr)]):
-        return True
-    else:
-        return False
-
 
 def loss_function(real, pred):
     # real shape = (BATCH_SIZE, max_length_output)
@@ -237,7 +176,7 @@ def helper2(sentence:str, dataset_creator:QADataset, lang_tokenizer, max_length_
 
 
 def beam_evaluate_sentence(context: str, question:str, units: int,
-                           dataset_creator: QADataset, lang_tokenizer,
+                           lang_tokenizer,
                            autoencoder:AutoEncoder,
                            max_length_input: int, max_length_output: int,
                            beam_width=3):
@@ -308,14 +247,14 @@ def beam_evaluate_sentence(context: str, question:str, units: int,
     return final_outputs.numpy(), beam_scores.numpy()
 
 
-def beam_translate(context: str, question:str,answer:str, units: int,
-                           dataset_creator: QADataset, lang_tokenizer,
+def beam_answer(context: str, question:str,answer:str, units: int,
+                           lang_tokenizer,
                            autoencoder:AutoEncoder,
                            max_length_input: int, max_length_output: int,
                            beam_width=3):
 
     result, beam_scores = beam_evaluate_sentence(context, question, units,
-                           dataset_creator,lang_tokenizer=lang_tokenizer,
+                           lang_tokenizer=lang_tokenizer,
                            autoencoder=autoencoder,
                             max_length_input=max_length_input, max_length_output=max_length_output,
                            beam_width=beam_width)
@@ -333,6 +272,5 @@ def beam_translate(context: str, question:str,answer:str, units: int,
         print(f'Question {next(lang_tokenizer.sequences_to_texts_generator(question.numpy()))}'.replace("<OOV>", ''))
         print(f'Expected Answer: {next(lang_tokenizer.sequences_to_texts_generator(answer.numpy()))}'.replace("<OOV>", ''))
 
-        for i in range(len(output)):
-            print('{} Predicted translation: {}  {}'.format(
-                i+1, output[i], beam_score[i]))
+        for i, (out, score) in enumerate(zip(output, beam_score)) :
+            print(f'{i} Predicted translation: {out} {score}')

@@ -6,7 +6,8 @@ import tensorflow.keras as keras
 import tensorflow_addons as tfa
 
 from tqdm import tqdm, trange
-from .encoder_decoder_model import AutoEncoder, AnchorLoss, loss_function
+from .encoder_decoder_model import AutoEncoder, loss_function, beam_answer
+from .anchor_loss import AnchorLoss
 
 class TrainingLoop:
 
@@ -15,11 +16,11 @@ class TrainingLoop:
         self.dataset_creator = dataset_creator
 
         vocab_inp_size, vocab_tar_size, max_length_input, \
-         max_length_output, embedding_dim, units, BATCH_SIZE = self.parse_hyperparameters(D, frac)
+         self.max_length_output, self.embedding_dim, units, BATCH_SIZE = self.parse_hyperparameters(D, frac)
         
-        self.autoencoder = AutoEncoder(vocab_inp_size, embedding_dim, units, BATCH_SIZE,
-         max_length_input, max_length_output, self.lang_tokenizer)
-        self.anchorloss = AnchorLoss(max_length_output, BATCH_SIZE)
+        self.autoencoder = AutoEncoder(vocab_inp_size, self.embedding_dim, units, BATCH_SIZE,
+         max_length_input, self.max_length_output, self.lang_tokenizer)
+        self.anchorloss = AnchorLoss(self.max_length_output, BATCH_SIZE)
         self.optimizer = optimizer
 
         # self.checkpointer = keras.callbacks.ModelCheckpoint(filepath='training_checkpoints', save_weights_only=False)
@@ -35,6 +36,8 @@ class TrainingLoop:
                                         checkpoint, checkpoint_dir, 4, checkpoint_name='ckpt', 
                                         step_counter=None, checkpoint_interval=None,
                                         init_fn=None)
+
+        status = self.checkpoint_manager.restore_or_initialize()
 
         self.callbacks = keras.callbacks.CallbackList(
             _callbacks, add_history=True, model=self.autoencoder)
@@ -141,7 +144,7 @@ class TrainingLoop:
             sequences = pred.sample_id
             sequences = self.autoencoder.encoder.embedding(sequences)
 
-            anchLoss = self.anchorloss.loss(sequences)
+            anchLoss = self.anchorloss.loss(sequences, logits)
             loss = loss_function(real, logits)
             loss += tf.cast(BETA * anchLoss, dtype=tf.float32) 
             # variables = encoder.trainable_variables + decoder.trainable_variables
@@ -172,3 +175,16 @@ class TrainingLoop:
             self.optimizer.apply_gradients(zip(gradients, variables))
 
         return loss
+
+    def eval_model(self):
+        
+
+        for (batch, data_dict) in tqdm(enumerate(self.val_dataset.take(self.steps_per_epoch))):
+            context = data_dict['context']
+            question = data_dict['question']
+            answer = data_dict['target']
+            
+            beam_answer(context, question, answer, self.embedding_dim,
+                        dataset_creator = self.dataset_creator, lang_tokenizer = self.lang_tokenizer, 
+                        autoencoder = self.autoencoder, 
+                        max_length_input=self.max_length_input, max_length_output=self.max_length_output)

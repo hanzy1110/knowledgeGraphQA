@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow.keras as keras
-from src.encoder_decoder.encoder_decoder_model import AutoEncoder, AnchorLoss, beam_translate 
+from src.encoder_decoder.encoder_decoder_model import AutoEncoder, AnchorLoss, beam_answer 
 from tqdm import tqdm, trange
 
 from src.utils.dataset_creators import QADataset
@@ -70,7 +70,7 @@ for (batch, data_dict) in tqdm(enumerate(val_dataset.take(steps_per_epoch))):
     question = data_dict['question']
     answer = data_dict['target']
     
-    beam_translate(context, question, answer, D,
+    beam_answer(context, question, answer, D,
                 dataset_creator = dataset_creator, lang_tokenizer = lang_tokenizer, 
                 autoencoder = autoencoder, 
                 max_length_input=max_length_input, max_length_output=max_length_output)

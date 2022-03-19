@@ -4,7 +4,7 @@ import tensorflow.keras as keras
 from src.encoder_decoder.encoder_decoder_model import (Encoder, Decoder,
                                                      loss_function, 
                                                      beam_evaluate_sentence,
-                                                     beam_translate)
+                                                     beam_answer)
 from src.utils.dataset_creators import QADataset
 
 path = 'final_dataset_clean_v2 .tsv'
