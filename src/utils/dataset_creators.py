@@ -43,19 +43,14 @@ class QADataset:
         w = '<start> ' + w + ' <end>'
         return w
 
-    def create_dataset(self, path, num_examples):
+    def create_dataset(self, path, frac):
         # path : path to spa-eng.txt file
         # num_examples : Limit the total number of training example for faster training (set num_examples = len(lines) to use full data)
         data = pd.read_csv(path, delimiter='\t')
-        aux:List[str] = []
-        for idx in data.index:
-            aux.append(str(data.iloc[idx]['paragraph']) + "<question>" + str(data.iloc[idx]['question']))
-    
-        # lines = io.open(path, encoding='UTF-8').read().strip().split('\n')
-        # clean_input = [self.preprocess_sentence(w) for w in aux[:num_examples]]
-        clean_context = [self.preprocess_sentence(w) for w in data['paragraph'][:num_examples]]
-        clean_questions = [self.preprocess_sentence(w) for w in data['question'][:num_examples]]
-        clean_answers = [self.preprocess_sentence(w) for w in data['answer'][:num_examples]]
+        data = data.sample(frac=frac)
+        clean_context = [self.preprocess_sentence(w) for w in data['paragraph']]
+        clean_questions = [self.preprocess_sentence(w) for w in data['question']]
+        clean_answers = [self.preprocess_sentence(w) for w in data['answer']]
 
         return clean_context, clean_questions, clean_answers
 

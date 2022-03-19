@@ -72,7 +72,7 @@ with tf.device('/GPU:0'):
 
             anchLoss = anchorloss.loss(sequences)
             loss = loss_function(real, logits)
-            loss += BETA * anchLoss
+            loss += tf.cast(BETA * anchLoss, dtype=tf.float32) 
             # variables = encoder.trainable_variables + decoder.trainable_variables
             variables = autoencoder.trainable_variables
 
