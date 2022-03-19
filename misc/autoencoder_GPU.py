@@ -81,12 +81,12 @@ with tf.device('/GPU:0'):
 
         return loss
 
-    EPOCHS = 10
+    EPOCHS = 30
 
     checkpointer = keras.callbacks.ModelCheckpoint(filepath='training_checkpoints', save_weights_only=False)
     tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
-    # _callbacks = [checkpointer, tensorboard_callback]
-    _callbacks = [tensorboard_callback]
+    _callbacks = [checkpointer, tensorboard_callback]
+    # _callbacks = [tensorboard_callback]
 
     callbacks = keras.callbacks.CallbackList(
         _callbacks, add_history=True, model=autoencoder)
@@ -128,9 +128,15 @@ with tf.device('/GPU:0'):
                                                              batch,
                                                              batch_loss.numpy()))
             # saving (checkpoint) the model every 2 epochs
-            if (epoch + 1) % 2 == 0:
-                callbacks.on_epoch_end(epoch=epoch, logs=logs)
-                # callbacks.on_epoch_end(epoch=epoch,logs=logs, )
+        if (epoch + 1) % 2 == 0:
+            try:
+                print('saving model')
+                autoencoder.save_weights('training_checkpoints')
+                # callbacks.on_epoch_end(epoch=epoch, logs=logs)
+            # callbacks.on_epoch_end(epoch=epoch,logs=logs, )
+            except Exception as e:
+                print(e)
+                print('Error saving model')
                 autoencoder.save('training_checkpoints/ckpt')
 
         print('Epoch {} Loss {:.4f}'.format(epoch + 1,
