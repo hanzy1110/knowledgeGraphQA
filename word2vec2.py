@@ -100,7 +100,7 @@ path = 'final_dataset_clean_v2 .tsv'
 
 dataset_creator = QADataset(path)
 
-num_examples = -1
+num_examples = 1
 BUFFER_SIZE = 32000
 BATCH_SIZE = 128
 

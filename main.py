@@ -6,7 +6,7 @@ from src.utils.dataset_creators import QADataset
 path = 'final_dataset_clean_v2 .tsv'
 
 dataset_creator = QADataset(path)
-gpu = True
+gpu = False
 if gpu:
         
     with tf.device('/GPU:1'):
