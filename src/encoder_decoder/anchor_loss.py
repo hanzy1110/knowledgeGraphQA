@@ -45,8 +45,9 @@ class AnchorLoss():
                 anchor = tf.convert_to_tensor(arrdict['anchor'], dtype=tf.float32)
 
                 d1 = tf.norm(center-embedding)
-                d2 = tf.norm(center-anchor)
-                tensor[i] = d1+d2
+                # d2 = tf.norm(center-anchor)
+                # tensor[i] = d1+d2
+                tensor[i] = d1
             else:
                 continue
         return tf.reduce_sum(tf.convert_to_tensor(tensor))

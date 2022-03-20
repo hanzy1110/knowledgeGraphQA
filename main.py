@@ -6,13 +6,13 @@ from src.utils.dataset_creators import QADataset
 path = 'final_dataset_clean_v2 .tsv'
 
 dataset_creator = QADataset(path)
-gpu = False
+gpu = True
 
 if gpu:
         
     with tf.device('/GPU:0'):
         optimizer = keras.optimizers.Adam()
-        training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5)
+        training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_first')
 
         training_loop.train(3, case = 'initial')
 else:
@@ -28,7 +28,7 @@ if gpu:
         
     with tf.device('/GPU:0'):
         optimizer = keras.optimizers.Adam()
-        training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5)
+        training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
 
         training_loop.train(3, case = 'anchor')
 else:

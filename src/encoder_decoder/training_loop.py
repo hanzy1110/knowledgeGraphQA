@@ -11,7 +11,7 @@ from .anchor_loss import AnchorLoss
 
 class TrainingLoop:
 
-    def __init__(self, dataset_creator, optimizer, D, frac) -> None:
+    def __init__(self, dataset_creator, optimizer, D, frac, checkpoint_folder) -> None:
 
         self.dataset_creator = dataset_creator
 
@@ -27,7 +27,7 @@ class TrainingLoop:
         # tensorboard_callback = keras.callbacks.TensorBoard(log_dir="logs")
         # _callbacks = [checkpointer, tensorboard_callback]
         _callbacks = []
-        checkpoint_dir = './training_checkpoints'
+        checkpoint_dir = f'./{checkpoint_folder}'
         checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
         checkpoint = tf.train.Checkpoint(optimizer=optimizer,
                                         autoencoder = self.autoencoder)
@@ -45,13 +45,13 @@ class TrainingLoop:
     def parse_hyperparameters(self, D, frac:float=1):
 
         BUFFER_SIZE = 32000
-        BATCH_SIZE = 128
+        self.BATCH_SIZE = 128
         units = 1024
 
         self.BETA = 0.03
 
         self.train_dataset, self.val_dataset, self.lang_tokenizer = self.dataset_creator.call(
-            frac, BUFFER_SIZE, BATCH_SIZE)
+            frac, BUFFER_SIZE, self.BATCH_SIZE)
 
         data_dict = next(iter(self.train_dataset))
         print(data_dict['context'].shape,
@@ -63,9 +63,9 @@ class TrainingLoop:
         max_length_output = data_dict['target'].shape[1]
 
         embedding_dim = D
-        self.steps_per_epoch = int(frac*BATCH_SIZE)
+        self.steps_per_epoch = int(frac*self.BATCH_SIZE)
 
-        return vocab_inp_size, vocab_tar_size, max_length_input, max_length_output, embedding_dim, units, BATCH_SIZE
+        return vocab_inp_size, vocab_tar_size, max_length_input, max_length_output, embedding_dim, units, self.BATCH_SIZE
 
     def train(self,EPOCHS = 10, case = 'initial'):
 
@@ -176,15 +176,60 @@ class TrainingLoop:
 
         return loss
 
-    def eval_model(self):
+    def exact_match(self):
         
+        correct = 0
+        total = 0
 
         for (batch, data_dict) in tqdm(enumerate(self.val_dataset.take(self.steps_per_epoch))):
             context = data_dict['context']
             question = data_dict['question']
             answer = data_dict['target']
             
-            beam_answer(context, question, answer, self.embedding_dim,
+            out = beam_answer(context, question, answer, self.embedding_dim,
                         dataset_creator = self.dataset_creator, lang_tokenizer = self.lang_tokenizer, 
                         autoencoder = self.autoencoder, 
-                        max_length_input=self.max_length_input, max_length_output=self.max_length_output)
+                          max_length_input=self.max_length_input, max_length_output=self.max_length_output)
+
+            if any(list(map(lambda x: x == answer, out))):
+                correct +=1
+                total += 1
+            else:
+                total += 1            
+
+        return correct/total
+    
+    def F1_metric(self, frac, max_false_positives):
+        dataset = self.dataset_creator.call_post(frac, max_false_positives, self.BATCH_SIZE)
+        
+        false_positives = 0
+        false_negatives = 0
+        true_positives = 0
+
+        for (batch, data_dict) in tqdm(enumerate(dataset.take(self.steps_per_epoch))):
+                context = data_dict['context']
+                question = data_dict['question']
+                answer = data_dict['target']
+                
+                out = beam_answer(context, question, answer, self.embedding_dim,
+                            dataset_creator = self.dataset_creator, lang_tokenizer = self.lang_tokenizer, 
+                            autoencoder = self.autoencoder, 
+                            max_length_input=self.max_length_input, max_length_output=self.max_length_output)
+                if answer == '':
+                    # Check for false positive
+                    # If the predicted answer is empty then:
+                    if any(list(map(lambda x: x == answer, out))):
+                        true_positives += 1
+                    else:
+                        # Predicted answer is plain wrong
+                        false_positives +=1
+                else:
+                    if any(list(map(lambda x: x == answer, out))):
+                        true_positives += 1
+                    elif any(list(map(lambda x: x == '', out))):
+                        false_negatives += 1
+
+        P = true_positives/(true_positives + false_positives)
+        R = true_positives/(true_positives + false_negatives)
+        
+        return 2 * P*R/(P+R)

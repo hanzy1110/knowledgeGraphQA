@@ -274,3 +274,25 @@ def beam_answer(context: str, question:str,answer:str, units: int,
 
         for i, (out, score) in enumerate(zip(output, beam_score)) :
             print(f'{i} Predicted translation: {out} {score}')
+
+def beam_answer_evauate_answers(context: str, question:str,answer:str, units: int,
+                           lang_tokenizer,
+                           autoencoder:AutoEncoder,
+                           max_length_input: int, max_length_output: int,
+                           beam_width=3):
+
+    result, beam_scores = beam_evaluate_sentence(context, question, units,
+                           lang_tokenizer=lang_tokenizer,
+                           autoencoder=autoencoder,
+                            max_length_input=max_length_input, max_length_output=max_length_output,
+                           beam_width=beam_width)
+
+    print(result.shape, beam_scores.shape)
+    output = []
+    for beam, score in zip(result, beam_scores):
+
+        print(beam.shape, score.shape)
+        _output = lang_tokenizer.sequences_to_texts(beam)
+        output.append([a[:a.index('<end>')] for a in _output])
+        # beam_score = [a.sum() for a in score]
+    return output

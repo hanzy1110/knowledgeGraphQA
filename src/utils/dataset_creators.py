@@ -4,6 +4,7 @@ import tensorflow.keras as keras
 import tensorflow_addons as tfa
 from typing import List
 from sklearn.model_selection import train_test_split
+from random import choice
 
 import pandas as pd
 import unicodedata
@@ -12,6 +13,23 @@ import numpy as np
 import os
 import io
 import time
+
+def mix_iters(original, mixed):
+    # List because otherwise mixed gets consumed in the set comprehension
+    mixed = list(mixed)
+    mixed_contexts = {context for context, question, answer in mixed} 
+    for tup in original:
+        # If they have the same context then prefer the mixed question
+        if tup[0] in mixed_contexts:
+            yield next(filter(lambda mixed_: mixed_[0] == tup[0], mixed)) 
+        # Else yield the original
+        else:
+            yield tup
+
+def mix_strings(str_arr):
+    # arr = np.array(str_Arr)
+    for _ in str_arr:   
+        yield choice(str_arr)
 
 class QADataset:
     def __init__(self, file_path):
@@ -85,10 +103,10 @@ class QADataset:
 
         return context_tensor, question_tensor, target_tensor, lang_tokenizer
 
-    def call(self, num_examples, BUFFER_SIZE, BATCH_SIZE):
+    def call(self, frac, BUFFER_SIZE, BATCH_SIZE):
         # file_path = download_nmt()
 
-        context_tensor, question_tensor, target_tensor, self.inp_lang_tokenizer = self.load_dataset(num_examples)
+        context_tensor, question_tensor, target_tensor, self.inp_lang_tokenizer = self.load_dataset(frac)
         # print(input_tensor.shape)
         # print(target_tensor.shape)
 
@@ -111,28 +129,41 @@ class QADataset:
 
         return train_dataset, val_dataset, self.inp_lang_tokenizer
 
-if __name__  == '__main__':
-    import random  
-    import string  
+    def create_false_positives(self, frac:float, max_false_positives:float):
 
-    def specific_string(length:int) -> str:  
-        # Generate random string
-        sample_string = 'pqrstuvwxy' # define the specific string  
-        # define the condition for random string  
-        result = ''.join((random.choice(sample_string)) for _ in range(length))  
+        clean_context, clean_questions, clean_answers = self.create_dataset(self.file_path, frac)
+        n = len(clean_context)
+        max_samples = int(n*max_false_positives)
+        original_data = zip(clean_context, clean_questions, clean_answers) 
+        # for each context, get random question which should produce no answer
+        mixed_data = zip(clean_context, mix_strings(clean_questions), ['' for _ in range(max_samples)])
+        self.false_positive_data = mix_iters(original_data, mixed_data)
+    
+    def load_dataset_post(self, frac, max_false_positives):
+        self.create_false_positives(frac, max_false_positives)
 
-        return result
-
-    _max_word_size = 25
-    _max_context_size = 10
-
-
-    with open("ramdom_dataset.txt", "w") as f:
-
-        random_context = [specific_string(random.randint(0,_max_word_size)) for _ in range(0,random.randint(0,1))]
+        context, questions, answers = [], [], []
+        for c,q,a, in self.false_positive_data:
+            context.append(c)
+            questions.append(q)
+            answers.append(a)
         
-        random_context.append('?')
-        random_context.append('\n')
+        lang_tokenizer = keras.preprocessing.text.Tokenizer(filters='', oov_token='<OOV>')
+        lang_tokenizer.fit_on_texts(context)
 
-        for _string in random_context:
-            pass
+        context_tensor = self.tokenize(context, lang_tokenizer)
+        question_tensor = self.tokenize(questions, lang_tokenizer)
+        target_tensor = self.tokenize(answers, lang_tokenizer)
+
+        return context_tensor, question_tensor, target_tensor, lang_tokenizer
+
+    def call_post(self, frac, max_false_positives, BATCH_SIZE):
+
+        context_tensor, question_tensor, target_tensor, self.inp_lang_tokenizer = self.load_dataset_post(frac, max_false_positives)
+        aux_val = {'context':context_tensor, 'question':question_tensor, 'target':target_tensor}
+
+        val_dataset = tf.data.Dataset.from_tensor_slices(aux_val)
+        val_dataset = val_dataset.batch(BATCH_SIZE, drop_remainder=True)
+
+        return val_dataset, self.inp_lang_tokenizer
+
