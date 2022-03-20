@@ -13,12 +13,12 @@ if gpu:
         optimizer = keras.optimizers.Adam()
         training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_first')
 
-        training_loop.train(3, case = 'initial')
+        training_loop.train(10, case = 'initial')
 else:
     optimizer = keras.optimizers.Adam()
     training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_first')
 
-    training_loop.train(3, case = 'initial')
+    training_loop.train(10, case = 'initial')
 
 #Expanding dataset:
 
@@ -29,10 +29,10 @@ if gpu:
         optimizer = keras.optimizers.Adam()
         training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
 
-        training_loop.train(3, case = 'anchor')
+        training_loop.train(10, case = 'anchor')
 else:
     optimizer = keras.optimizers.Adam()
     training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
 
-    training_loop.train(3, case = 'anchor')
+    training_loop.train(10, case = 'anchor')
 
