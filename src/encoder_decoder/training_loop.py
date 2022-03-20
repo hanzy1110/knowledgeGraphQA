@@ -45,8 +45,8 @@ class TrainingLoop:
     def parse_hyperparameters(self, D, frac:float=1):
 
         BUFFER_SIZE = 32000
-        self.BATCH_SIZE = 128
-        units = 1024
+        self.BATCH_SIZE = 64
+        units = 512
 
         self.BETA = 0.03
 
