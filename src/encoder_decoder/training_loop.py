@@ -129,7 +129,7 @@ class TrainingLoop:
                 history_object = cb
         assert history_object is not None
 
-    @tf.function
+    # @tf.function
     def train_step(self, inp, targ, loss_function, BETA):
         loss = 0
 
@@ -155,7 +155,7 @@ class TrainingLoop:
 
         return loss
     
-    @tf.function
+    # @tf.function
     def train_step_initial(self, inp, targ, loss_function):
         loss = 0
 
