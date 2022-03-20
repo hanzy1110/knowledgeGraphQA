@@ -11,7 +11,7 @@ if gpu:
         
     with tf.device('/GPU:1'):
         optimizer = keras.optimizers.Adam()
-        training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.8, checkpoint_folder='checkpoint_first')
+        training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=1, checkpoint_folder='checkpoint_first')
 
         training_loop.train(10, case = 'initial')
 else:
