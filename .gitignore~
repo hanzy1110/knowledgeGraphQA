@@ -3,14 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 checkpoint_first/
-checkpoint_KG/
+checkpoitn_KG/
 # C extensions
 *.so
 training_checkpoints/
-checkpoint_first/
-checkpoint_KG/
-mlruns/
-
 logs/
 # Distribution / packaging
 .Python
