@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 checkpoint_first/
+checkpoint_KG/
 # C extensions
 *.so
 training_checkpoints/
