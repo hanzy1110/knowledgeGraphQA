@@ -6,6 +6,7 @@ from src.utils.dataset_creators import QADataset
 
 path = 'final_dataset_clean_v2 .tsv'
 #os.remove('checkpoint_first')
+max_epochs = 20
 
 dataset_creator = QADataset(path)
 gpu = True
@@ -15,7 +16,7 @@ if gpu:
         optimizer = keras.optimizers.Adam()
         training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_first')
 
-        training_loop.train(10, case = 'initial')
+        training_loop.train(max_epochs, case = 'initial')
 else:
     print('No GPU!')
     optimizer = keras.optimizers.Adam()
@@ -31,8 +32,11 @@ if gpu:
     with tf.device('/GPU:1'):
         optimizer = keras.optimizers.Adam()
         training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
-
-        training_loop.train(10, case = 'anchor')
+        training_loop.train(max_epochs, case = 'anchor')
+        EM = training_loop.exact_match()
+        print(f'Exact Match--->{EM}')
+        F1 = training_loop.F1_metric(0.5, 0.1)
+        print(f'F1 Metric--->{F1}')
 else:
     optimizer = keras.optimizers.Adam()
     training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
