@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 training_checkpoints/
+checkpoint_first/
+checkpoint_KG/
+mlruns/
+
 logs/
 # Distribution / packaging
 .Python
