@@ -34,9 +34,10 @@ if gpu:
         training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
         training_loop.train(max_epochs, case = 'anchor')
         EM = training_loop.exact_match()
-        print(f'Exact Match--->{EM}')
         F1 = training_loop.F1_metric(0.5, 0.1)
-        print(f'F1 Metric--->{F1}')
+        with open('output.txt', 'w+') as file:
+            file.write(f'Exact Match--->{EM}')
+            file.write(f'F1 Metric--->{F1}')
 else:
     optimizer = keras.optimizers.Adam()
     training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
