@@ -186,12 +186,12 @@ class TrainingLoop:
             question = data_dict['question']
             answer = data_dict['target']
             
-            out = beam_answer_evauate_answers(context, question, answer, self.units,
+            out, ans = beam_answer_evauate_answers(context, question, answer, self.units,
                         lang_tokenizer = self.lang_tokenizer, 
                         autoencoder = self.autoencoder, 
                           max_length_input=self.max_length_input, max_length_output=self.max_length_output)
 
-            if any(list(map(lambda x: x == answer, out))):
+            if any(list(map(lambda x: x == ans, out))):
                 correct +=1
                 total += 1
             else:
@@ -211,20 +211,20 @@ class TrainingLoop:
                 question = data_dict['question']
                 answer = data_dict['target']
                 
-                out = beam_answer_evauate_answers(context, question, answer, self.units,
+                out, ans = beam_answer_evauate_answers(context, question, answer, self.units,
                             lang_tokenizer = self.lang_tokenizer, 
                             autoencoder = self.autoencoder, 
                             max_length_input=self.max_length_input, max_length_output=self.max_length_output)
-                if answer == '':
+                if ans == '':
                     # Check for false positive
                     # If the predicted answer is empty then:
-                    if any(list(map(lambda x: x == answer, out))):
+                    if any(list(map(lambda x: x == ans, out))):
                         true_positives += 1
                     else:
                         # Predicted answer is plain wrong
                         false_positives +=1
                 else:
-                    if any(list(map(lambda x: x == answer, out))):
+                    if any(list(map(lambda x: x == ans, out))):
                         true_positives += 1
                     elif any(list(map(lambda x: x == '', out))):
                         false_negatives += 1

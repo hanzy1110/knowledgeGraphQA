@@ -295,4 +295,4 @@ def beam_answer_evauate_answers(context: str, question:str,answer:str, units: in
         _output = lang_tokenizer.sequences_to_texts(beam)
         output.append([a[:a.index('<end>')] for a in _output])
         # beam_score = [a.sum() for a in score]
-    return output
+    return output, f'{next(lang_tokenizer.sequences_to_texts_generator(answer.numpy()))}'.replace("<OOV>", '')
