@@ -59,13 +59,13 @@ class TrainingLoop:
 
         vocab_inp_size = len(self.lang_tokenizer.word_index)+2
         vocab_tar_size = len(self.lang_tokenizer.word_index)+2
-        max_length_input = data_dict['context'].shape[1]
+        self.max_length_input = data_dict['context'].shape[1]
         max_length_output = data_dict['target'].shape[1]
 
         embedding_dim = D
         self.steps_per_epoch = int(frac*self.BATCH_SIZE)
 
-        return vocab_inp_size, vocab_tar_size, max_length_input, max_length_output, embedding_dim, units, self.BATCH_SIZE
+        return vocab_inp_size, vocab_tar_size, self.max_length_input, max_length_output, embedding_dim, units, self.BATCH_SIZE
 
     def train(self,EPOCHS = 10, case = 'initial'):
 

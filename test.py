@@ -10,6 +10,8 @@ dataset_creator = QADataset(path)
 # new_data = dataset_creator.create_false_positives(0.5, 0.1)
 data, lang_tokenizer = dataset_creator.call_post(0.4, 0.1, 128)
 
+optimizer = keras.optimizers.Adam()
+training_loop = TrainingLoop(dataset_creator, optimizer, D = 14, frac=0.5, checkpoint_folder='checkpoint_KG')
 
 for (batch, data_dict) in tqdm(enumerate(data.take(1))):
     print(batch, data_dict)
