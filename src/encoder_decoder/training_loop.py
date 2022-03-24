@@ -187,7 +187,7 @@ class TrainingLoop:
             answer = data_dict['target']
             
             out = beam_answer(context, question, answer, self.units,
-                        dataset_creator = self.dataset_creator, lang_tokenizer = self.lang_tokenizer, 
+                        lang_tokenizer = self.lang_tokenizer, 
                         autoencoder = self.autoencoder, 
                           max_length_input=self.max_length_input, max_length_output=self.max_length_output)
 
