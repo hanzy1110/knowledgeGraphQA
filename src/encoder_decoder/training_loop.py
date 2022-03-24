@@ -6,7 +6,7 @@ import tensorflow.keras as keras
 import tensorflow_addons as tfa
 
 from tqdm import tqdm, trange
-from .encoder_decoder_model import AutoEncoder, loss_function, beam_answer
+from .encoder_decoder_model import AutoEncoder, beam_answer_evauate_answers, loss_function, beam_answer
 from .anchor_loss import AnchorLoss
 
 class TrainingLoop:
@@ -186,7 +186,7 @@ class TrainingLoop:
             question = data_dict['question']
             answer = data_dict['target']
             
-            out = beam_answer(context, question, answer, self.units,
+            out = beam_answer_evauate_answers(context, question, answer, self.units,
                         lang_tokenizer = self.lang_tokenizer, 
                         autoencoder = self.autoencoder, 
                           max_length_input=self.max_length_input, max_length_output=self.max_length_output)
@@ -211,7 +211,7 @@ class TrainingLoop:
                 question = data_dict['question']
                 answer = data_dict['target']
                 
-                out = beam_answer(context, question, answer, self.units,
+                out = beam_answer_evauate_answers(context, question, answer, self.units,
                             lang_tokenizer = self.lang_tokenizer, 
                             autoencoder = self.autoencoder, 
                             max_length_input=self.max_length_input, max_length_output=self.max_length_output)
