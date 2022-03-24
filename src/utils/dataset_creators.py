@@ -65,6 +65,7 @@ class QADataset:
         # path : path to spa-eng.txt file
         # num_examples : Limit the total number of training example for faster training (set num_examples = len(lines) to use full data)
         data = pd.read_csv(path, delimiter='\t')
+        data = data[data['is_impossible']==False]
         data = data.sample(frac=frac)
         clean_context = [self.preprocess_sentence(w) for w in data['paragraph']]
         clean_questions = [self.preprocess_sentence(w) for w in data['question']]

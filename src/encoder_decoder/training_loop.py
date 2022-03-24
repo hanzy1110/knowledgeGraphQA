@@ -46,7 +46,7 @@ class TrainingLoop:
 
         BUFFER_SIZE = 32000
         self.BATCH_SIZE = 64
-        units = 512
+        self.units = 512
 
         self.BETA = 0.03
 
@@ -65,7 +65,7 @@ class TrainingLoop:
         embedding_dim = D
         self.steps_per_epoch = int(frac*self.BATCH_SIZE)
 
-        return vocab_inp_size, vocab_tar_size, self.max_length_input, max_length_output, embedding_dim, units, self.BATCH_SIZE
+        return vocab_inp_size, vocab_tar_size, self.max_length_input, max_length_output, embedding_dim, self.units, self.BATCH_SIZE
 
     def train(self,EPOCHS = 10, case = 'initial'):
 
@@ -186,7 +186,7 @@ class TrainingLoop:
             question = data_dict['question']
             answer = data_dict['target']
             
-            out = beam_answer(context, question, answer, self.embedding_dim,
+            out = beam_answer(context, question, answer, self.units,
                         dataset_creator = self.dataset_creator, lang_tokenizer = self.lang_tokenizer, 
                         autoencoder = self.autoencoder, 
                           max_length_input=self.max_length_input, max_length_output=self.max_length_output)
@@ -211,8 +211,8 @@ class TrainingLoop:
                 question = data_dict['question']
                 answer = data_dict['target']
                 
-                out = beam_answer(context, question, answer, self.embedding_dim,
-                            dataset_creator = self.dataset_creator, lang_tokenizer = self.lang_tokenizer, 
+                out = beam_answer(context, question, answer, self.units,
+                            lang_tokenizer = self.lang_tokenizer, 
                             autoencoder = self.autoencoder, 
                             max_length_input=self.max_length_input, max_length_output=self.max_length_output)
                 if answer == '':
